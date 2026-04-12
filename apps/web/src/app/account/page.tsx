@@ -1,20 +1,25 @@
 "use client";
 
-import { BookOpenText, PenSquare, ShieldCheck, Sparkles, UserCircle2 } from "lucide-react";
-import Link from "next/link";
+import { BadgeCheck, LogIn, LogOut, UserPlus, WalletCards } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import styles from "./page.module.css";
 
-export default function Home() {
+type MeUser = {
+  id: string;
+  email: string;
+  displayName: string | null;
+};
+
+export default function AccountPage() {
   const enableServer = process.env.NEXT_PUBLIC_ENABLE_SERVER === "true";
+
+  const [me, setMe] = useState<MeUser | null>(null);
   const [email, setEmail] = useState("test@example.com");
   const [password, setPassword] = useState("password123");
   const [displayName, setDisplayName] = useState("Test");
-  const [me, setMe] = useState<{ id: string; email: string; displayName: string | null } | null>(
-    null,
-  );
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!enableServer) return;
@@ -26,8 +31,9 @@ export default function Home() {
       });
   }, [enableServer]);
 
-  const callAuth = async (path: string, body: unknown) => {
+  const callAuth = async (path: "/api/auth/login" | "/api/auth/register", body: unknown) => {
     setBusy(true);
+    setError(null);
     try {
       const res = await fetch(path, {
         method: "POST",
@@ -37,7 +43,9 @@ export default function Home() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Request failed");
       setMe(data.user ?? null);
-      window.location.href = "/author";
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Request failed";
+      setError(message);
     } finally {
       setBusy(false);
     }
@@ -45,9 +53,14 @@ export default function Home() {
 
   const logout = async () => {
     setBusy(true);
+    setError(null);
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      const res = await fetch("/api/auth/logout", { method: "POST" });
+      if (!res.ok) throw new Error("Logout failed");
       setMe(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Logout failed";
+      setError(message);
     } finally {
       setBusy(false);
     }
@@ -56,79 +69,88 @@ export default function Home() {
   return (
     <main className={styles.page}>
       <section className={styles.hero}>
-        <div className={styles.heroBadge}>
-          <Sparkles size={14} />
-          Storycraft Workspace
+        <div className={styles.pill}>
+          <BadgeCheck size={13} />
+          API-backed account
         </div>
-        <h1>Choose Your Own Adventure</h1>
+        <h1>Account</h1>
         <p>
-          Build branching stories in Author mode, test the flow in Reader mode, and keep your graph
-          easy to navigate as it grows.
+          This page only includes features implemented in the current API: session lookup, login,
+          register, and logout.
         </p>
       </section>
 
       <section className={styles.card}>
-        <div className={styles.cardTitle}>
-          <ShieldCheck size={16} />
-          Account
-        </div>
+        <h2>
+          <WalletCards size={17} />
+          Session
+        </h2>
         {!enableServer ? (
-          <div className={styles.muted}>
-            Server sync is disabled (local-only mode). Set <code>NEXT_PUBLIC_ENABLE_SERVER</code> to
-            &quot;true&quot; and configure Supabase env vars to enable login + cross-device saving.
-          </div>
+          <p className={styles.muted}>
+            Server sync is disabled. Set <code>NEXT_PUBLIC_ENABLE_SERVER</code> to <code>true</code>{" "}
+            to use account endpoints.
+          </p>
         ) : me ? (
-          <div className={styles.inlineRow}>
-            <div className={styles.muted}>
-              Signed in as <span className={styles.strong}>{me.email}</span>
+          <div className={styles.stack}>
+            <div className={styles.row}>
+              <span className={styles.label}>Email</span>
+              <span>{me.email}</span>
             </div>
-            <div className={styles.spacer} />
+            <div className={styles.row}>
+              <span className={styles.label}>Display name</span>
+              <span>{me.displayName || "(none)"}</span>
+            </div>
             <button
               type="button"
               onClick={() => void logout()}
               disabled={busy}
-              className={styles.buttonSecondary}
+              className={styles.button}
             >
+              <LogOut size={15} />
               Logout
             </button>
           </div>
         ) : (
-          <div className={styles.formGrid}>
+          <div className={styles.stack}>
             <label className={styles.field}>
-              <div className={styles.fieldLabel}>Email</div>
+              <span className={styles.label}>Email</span>
               <input
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
                 className={styles.input}
+                placeholder="you@example.com"
               />
             </label>
+
             <label className={styles.field}>
-              <div className={styles.fieldLabel}>Password</div>
+              <span className={styles.label}>Password</span>
               <input
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 type="password"
-                placeholder="8+ characters"
                 className={styles.input}
+                placeholder="8+ characters"
               />
             </label>
+
             <label className={styles.field}>
-              <div className={styles.fieldLabel}>Display name (register only)</div>
+              <span className={styles.label}>Display name (register)</span>
               <input
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Optional"
                 className={styles.input}
+                placeholder="Optional"
               />
             </label>
+
             <div className={styles.actions}>
               <button
                 type="button"
                 onClick={() => void callAuth("/api/auth/login", { email, password })}
                 disabled={busy}
-                className={styles.buttonPrimary}
+                className={styles.button}
               >
+                <LogIn size={15} />
                 Login
               </button>
               <button
@@ -137,28 +159,16 @@ export default function Home() {
                   void callAuth("/api/auth/register", { email, password, displayName })
                 }
                 disabled={busy}
-                className={styles.buttonSecondary}
+                className={styles.button}
               >
+                <UserPlus size={15} />
                 Register
               </button>
             </div>
           </div>
         )}
-      </section>
 
-      <section className={styles.actionsPanel}>
-        <Link href="/author" className={styles.buttonPrimary}>
-          <PenSquare size={16} />
-          Open Author
-        </Link>
-        <Link href="/read" className={styles.buttonSecondary}>
-          <BookOpenText size={16} />
-          Open Reader
-        </Link>
-        <Link href="/account" className={styles.buttonSecondary}>
-          <UserCircle2 size={16} />
-          Account
-        </Link>
+        {error ? <p className={styles.error}>{error}</p> : null}
       </section>
     </main>
   );

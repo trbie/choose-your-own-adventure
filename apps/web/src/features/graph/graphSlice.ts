@@ -61,7 +61,8 @@ export const graphSlice = createSlice({
       const id = action.payload.id;
       state.doc.nodes = state.doc.nodes.filter((n) => n.id !== id);
       state.doc.edges = state.doc.edges.filter((e) => e.source !== id && e.target !== id);
-      if (state.selection.kind !== "none" && state.selection.id === id) state.selection = { kind: "none" };
+      if (state.selection.kind !== "none" && state.selection.id === id)
+        state.selection = { kind: "none" };
       touch(state.doc);
     },
 
@@ -83,7 +84,8 @@ export const graphSlice = createSlice({
       if (!state.doc) return;
       const id = action.payload.id;
       state.doc.edges = state.doc.edges.filter((e) => e.id !== id);
-      if (state.selection.kind !== "none" && state.selection.id === id) state.selection = { kind: "none" };
+      if (state.selection.kind !== "none" && state.selection.id === id)
+        state.selection = { kind: "none" };
       touch(state.doc);
     },
   },

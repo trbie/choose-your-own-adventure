@@ -7,7 +7,15 @@ import type { GraphIndex } from "@cyoa/shared";
 import { updateEdge, updateNode } from "@/features/graph/graphSlice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
-export default function InspectorPanel({ index }: { index: GraphIndex | null }) {
+import styles from "./InspectorPanel.module.css";
+
+export default function InspectorPanel({
+  index,
+  width,
+}: {
+  index: GraphIndex | null;
+  width?: number;
+}) {
   const dispatch = useAppDispatch();
   const selection = useAppSelector((s) => s.graph.selection);
 
@@ -21,68 +29,70 @@ export default function InspectorPanel({ index }: { index: GraphIndex | null }) 
     return index.edgeById[selection.id] ?? null;
   }, [index, selection]);
 
-  return (
-    <aside
-      style={{
-        width: 360,
-        borderLeft: "1px solid #e5e7eb",
-        padding: 12,
-        overflow: "auto",
-      }}
-    >
-      <div style={{ fontWeight: 600, marginBottom: 8 }}>Inspector</div>
+  const bodyStats = useMemo(() => {
+    const body = selectedNode?.body ?? "";
+    const chars = body.length;
+    const words = body.trim().length ? body.trim().split(/\s+/).length : 0;
+    return { chars, words };
+  }, [selectedNode?.body]);
 
-      {!index && <div style={{ opacity: 0.7 }}>Loading graph…</div>}
+  return (
+    <aside className={styles.panel} style={{ width }}>
+      <div className={styles.title}>Inspector</div>
+
+      {!index && <div className={styles.hint}>Loading graph…</div>}
 
       {index && selection.kind === "none" && (
-        <div style={{ opacity: 0.7 }}>Select a node or edge to edit.</div>
+        <div className={styles.hint}>Select a node or edge to edit.</div>
       )}
 
       {selectedNode && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ fontSize: 12, opacity: 0.7 }}>Node: {selectedNode.id}</div>
+        <div className={styles.stack}>
+          <div className={styles.meta}>Node: {selectedNode.id}</div>
 
-          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <div style={{ fontSize: 12, fontWeight: 600 }}>Title</div>
+          <label className={styles.field}>
+            <div className={styles.label}>Title</div>
             <input
               value={selectedNode.title}
               onChange={(e) =>
                 dispatch(updateNode({ id: selectedNode.id, changes: { title: e.target.value } }))
               }
-              style={{ padding: 8, border: "1px solid #d1d5db", borderRadius: 6 }}
+              className={styles.input}
             />
           </label>
 
-          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <div style={{ fontSize: 12, fontWeight: 600 }}>Body</div>
+          <label className={styles.field}>
+            <div className={styles.label}>Body</div>
             <textarea
               value={selectedNode.body}
               onChange={(e) =>
                 dispatch(updateNode({ id: selectedNode.id, changes: { body: e.target.value } }))
               }
-              rows={10}
-              style={{
-                padding: 8,
-                border: "1px solid #d1d5db",
-                borderRadius: 6,
-                resize: "vertical",
-              }}
+              rows={12}
+              className={styles.textarea}
+              placeholder="Write this page section here..."
             />
+            <div className={styles.metrics}>
+              <span>{bodyStats.words} words</span>
+              <span>{bodyStats.chars} chars</span>
+            </div>
           </label>
 
-          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <label className={styles.checkboxRow}>
             <input
               type="checkbox"
               checked={selectedNode.isTerminal}
               onChange={(e) =>
-                dispatch(updateNode({ id: selectedNode.id, changes: { isTerminal: e.target.checked } }))
+                dispatch(
+                  updateNode({ id: selectedNode.id, changes: { isTerminal: e.target.checked } }),
+                )
               }
             />
-            <span style={{ fontSize: 12, fontWeight: 600 }}>Terminal</span>
+            <span className={styles.label}>Terminal</span>
           </label>
 
-          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <div style={{ fontSize: 12, fontWeight: 600 }}>Tags (comma-separated)</div>
+          <label className={styles.field}>
+            <div className={styles.label}>Tags (comma-separated)</div>
             <input
               value={selectedNode.tags.join(", ")}
               onChange={(e) =>
@@ -98,33 +108,40 @@ export default function InspectorPanel({ index }: { index: GraphIndex | null }) 
                   }),
                 )
               }
-              style={{ padding: 8, border: "1px solid #d1d5db", borderRadius: 6 }}
+              className={styles.input}
             />
           </label>
 
-          <div style={{ fontSize: 12, opacity: 0.75 }}>
-            Incoming edges: {index?.incomingEdgeIdsByNodeId[selectedNode.id]?.length ?? 0}
-            <br />
-            Outgoing edges: {index?.outgoingEdgeIdsByNodeId[selectedNode.id]?.length ?? 0}
+          <div className={styles.sectionCard}>
+            <div className={styles.metrics}>
+              <span>Incoming edges</span>
+              <span>{index?.incomingEdgeIdsByNodeId[selectedNode.id]?.length ?? 0}</span>
+            </div>
+            <div className={styles.metrics}>
+              <span>Outgoing edges</span>
+              <span>{index?.outgoingEdgeIdsByNodeId[selectedNode.id]?.length ?? 0}</span>
+            </div>
           </div>
         </div>
       )}
 
       {selectedEdge && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ fontSize: 12, opacity: 0.7 }}>Edge: {selectedEdge.id}</div>
-          <div style={{ fontSize: 12 }}>
+        <div className={styles.stack}>
+          <div className={styles.meta}>Edge: {selectedEdge.id}</div>
+          <div className={styles.hint}>
             {selectedEdge.source} → {selectedEdge.target}
           </div>
 
-          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <div style={{ fontSize: 12, fontWeight: 600 }}>Choice text</div>
+          <label className={styles.field}>
+            <div className={styles.label}>Choice text</div>
             <input
               value={selectedEdge.choiceText}
               onChange={(e) =>
-                dispatch(updateEdge({ id: selectedEdge.id, changes: { choiceText: e.target.value } }))
+                dispatch(
+                  updateEdge({ id: selectedEdge.id, changes: { choiceText: e.target.value } }),
+                )
               }
-              style={{ padding: 8, border: "1px solid #d1d5db", borderRadius: 6 }}
+              className={styles.input}
             />
           </label>
         </div>
