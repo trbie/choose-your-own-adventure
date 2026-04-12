@@ -2,7 +2,104 @@
 
 ## Purpose
 
-This workspace extracts text from the scanned PDF of The Cave of Time, builds a story graph from the extracted pages, writes all possible bounded story paths, and renders the graph as SVG.
+This workspace has two halves:
+
+1) A Python pipeline that extracts text from the scanned PDF of *The Cave of Time*, builds a story graph from extracted pages, enumerates bounded story paths, and renders the graph.
+2) A TypeScript/Next.js web app for interactive graph authoring and reader mode.
+
+The web app can run in local-only mode (no DB/auth), but also includes optional server persistence behind a feature flag.
+
+## Repo Layout (High Level)
+
+- output/: canonical OCR pages + derived artifacts used by scripts
+- scripts/: Python pipeline (OCR, graph build, story enumeration, SVG render)
+- apps/web/: Next.js (App Router) web app: author mode + reader mode + optional API
+- packages/shared/: shared TypeScript types + selectors + tests
+
+## Web App (Phases 0–6 Implemented)
+
+### What It Is
+
+- Next.js App Router UI with two primary modes:
+  - /author: interactive graph editor (React Flow)
+  - /read: reader mode (plays the story from the graph)
+- Graph state is held in Redux Toolkit and persisted locally (localStorage).
+- Optional server mode (Prisma + JWT + Postgres/Supabase) exists but is gated behind NEXT_PUBLIC_ENABLE_SERVER.
+
+### Key Files
+
+- apps/web/src/app/providers.tsx
+  - Boots the Redux store.
+  - Loads the graph in this order:
+    1) server graph (only if NEXT_PUBLIC_ENABLE_SERVER=true + logged in + graph id exists)
+    2) local draft from localStorage
+    3) seed graph JSON at /seed/graph.cot.json
+  - Autosaves draft locally; optionally debounced server sync.
+
+- apps/web/public/seed/graph.cot.json
+  - Seed graph used for Reset + first-time load.
+  - Generated from Python outputs via npm run seed:cot.
+
+- apps/web/scripts/seed-cot.ts
+  - Imports output/cot-story-graph.mmd + output/cot-pages-ocr-v2 into apps/web/public/seed/graph.cot.json.
+
+- apps/web/src/app/author/page.tsx
+  - Author route entry.
+
+- apps/web/src/app/read/page.tsx
+  - Reader route entry.
+
+### Phases 0–6 (Completed)
+
+Phase 0 — Repo scaffolding
+- Added npm workspaces with apps/web and packages/shared.
+
+Phase 1 — Shared graph model + utilities
+- Shared GraphDocument model + indexing/selectors live in packages/shared.
+- Unit tests for selectors live in packages/shared/test.
+
+Phase 2 — Seed import
+- Added npm run seed:cot to generate a seed JSON graph for the web app.
+
+Phase 3 — Author/editor mode
+- Interactive graph editor using React Flow with Redux-backed controlled nodes/edges.
+- Create/delete nodes and edges; connect nodes.
+
+Phase 4 — Local persistence + export/import
+- Local draft autosave to localStorage.
+- Export graph JSON, import graph JSON, reset-to-seed behavior.
+
+Phase 5 — Optional server persistence (gated)
+- Prisma schema for Users/Graphs/Nodes/Edges/ReadingProgress.
+- JWT auth using httpOnly cookie.
+- API routes for auth and graph CRUD.
+- Runs locally without DB credentials when NEXT_PUBLIC_ENABLE_SERVER is not true.
+
+Phase 6 — Reader mode
+- Reader UI renders current page + body + choices.
+- Choice labels fall back to destination page number when choice text is missing.
+- Clickable history “time travel” that doesn’t mutate history.
+- If you branch from a past point, shows a confirmation modal before truncating.
+- If you re-pick the same next decision as before, it advances without truncation.
+
+### Web App Commands
+
+- npm run dev
+  - Runs the Next.js dev server (apps/web).
+
+- npm run seed:cot
+  - Rebuilds apps/web/public/seed/graph.cot.json from output/ artifacts.
+
+- npm test
+  - Runs packages/shared tests.
+
+### Web App Env / Secrets
+
+- Do not commit real .env files.
+- This repo ignores .env and .env.* but allows committing .env.example templates.
+- Feature flag:
+  - NEXT_PUBLIC_ENABLE_SERVER=false (default local-only)
+  - NEXT_PUBLIC_ENABLE_SERVER=true enables auth + server sync calls
 
 ## Canonical Source Of Truth
 
@@ -144,3 +241,4 @@ When resuming work:
 2. Treat output/cot-pages-ocr-v2 as the current source text.
 3. If extraction quality needs improvement, update reextract_cot_ocr_split.py rather than rebuilding older workflows.
 4. If graph or story outputs need regeneration, rerun build_story_graph.py, write_all_stories.py, and render_story_graph_svg.py in that order.
+5. If the web seed graph needs regeneration, rerun the Python steps above, then run npm run seed:cot.

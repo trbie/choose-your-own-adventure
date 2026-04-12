@@ -1,0 +1,36 @@
+{
+  "name": "choose-your-own-adventure",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CYOA graph extraction + interactive authoring tool",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run -w apps/web dev",
+    "build": "npm run -w apps/web build",
+    "start": "npm run -w apps/web start",
+    "lint": "npm run -w apps/web lint",
+    "typecheck": "npm run -w apps/web typecheck",
+    "test": "npm run -w packages/shared test",
+    "seed:cot": "tsx apps/web/scripts/seed-cot.ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/trbie/choose-your-own-adventure.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/trbie/choose-your-own-adventure/issues"
+  },
+  "homepage": "https://github.com/trbie/choose-your-own-adventure#readme",
+  "devDependencies": {
+    "prettier": "^3.3.0",
+    "tsx": "^4.19.0"
+  }
+}
