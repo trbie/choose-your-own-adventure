@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  displayName  String?
+  passwordHash String
+
+  graphs    Graph[]
+  progress  ReadingProgress[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Graph {
+  id          String  @id @default(cuid())
+  ownerId     String
+  owner       User    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String?
+  startNodeId String?
+
+  nodes GraphNode[]
+  edges GraphEdge[]
+  progress ReadingProgress[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId])
+}
+
+model GraphNode {
+  graphId      String
+  nodeId       String
+  graph        Graph   @relation(fields: [graphId], references: [id], onDelete: Cascade)
+
+  type         String
+  pageNumber   Int?
+  title        String
+  body         String
+  tags         Json
+  isTerminal   Boolean
+
+  positionX    Float
+  positionY    Float
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@id([graphId, nodeId])
+  @@index([graphId])
+}
+
+model GraphEdge {
+  graphId       String
+  edgeId        String
+  graph         Graph   @relation(fields: [graphId], references: [id], onDelete: Cascade)
+
+  sourceNodeId  String
+  targetNodeId  String
+  choiceText    String
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@id([graphId, edgeId])
+  @@index([graphId])
+}
+
+model ReadingProgress {
+  id            String   @id @default(cuid())
+  userId        String
+  graphId       String
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  graph         Graph    @relation(fields: [graphId], references: [id], onDelete: Cascade)
+
+  currentNodeId String?
+  history       Json
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([userId, graphId])
+  @@index([graphId])
+}
