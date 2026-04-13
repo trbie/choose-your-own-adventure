@@ -15,6 +15,20 @@ export default function Home() {
     null,
   );
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [stories, setStories] = useState<
+    Array<{
+      id: string;
+      title: string;
+      description: string | null;
+      authorName: string;
+      updatedAt: string;
+      nodeCount: number;
+      edgeCount: number;
+    }>
+  >([]);
+  const [storiesLoading, setStoriesLoading] = useState(false);
+  const [storiesError, setStoriesError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!enableServer) return;
@@ -26,8 +40,47 @@ export default function Home() {
       });
   }, [enableServer]);
 
+  useEffect(() => {
+    if (!enableServer || !me) {
+      setStories([]);
+      setStoriesError(null);
+      return;
+    }
+
+    const loadStories = async () => {
+      setStoriesLoading(true);
+      setStoriesError(null);
+      try {
+        const res = await fetch("/api/stories", { cache: "no-store" });
+        const data = (await res.json().catch(() => ({}))) as {
+          stories?: Array<{
+            id: string;
+            title: string;
+            description: string | null;
+            authorName: string;
+            updatedAt: string;
+            nodeCount: number;
+            edgeCount: number;
+          }>;
+          error?: string;
+        } | null;
+
+        if (!res.ok) throw new Error(data?.error || "Failed to load stories");
+        setStories(data?.stories ?? []);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to load stories";
+        setStoriesError(message);
+      } finally {
+        setStoriesLoading(false);
+      }
+    };
+
+    void loadStories();
+  }, [enableServer, me]);
+
   const callAuth = async (path: string, body: unknown) => {
     setBusy(true);
+    setError(null);
     try {
       const res = await fetch(path, {
         method: "POST",
@@ -37,7 +90,9 @@ export default function Home() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Request failed");
       setMe(data.user ?? null);
-      window.location.href = "/author";
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Request failed";
+      setError(message);
     } finally {
       setBusy(false);
     }
@@ -144,7 +199,44 @@ export default function Home() {
             </div>
           </div>
         )}
+        {error ? <div className={styles.muted}>{error}</div> : null}
       </section>
+
+      {enableServer && me ? (
+        <section className={styles.card}>
+          <div className={styles.cardTitle}>Browse stories</div>
+          <div className={styles.muted} style={{ marginBottom: 12 }}>
+            Jump into stories created by other authors on this workspace.
+          </div>
+          {storiesLoading ? <div className={styles.muted}>Loading stories…</div> : null}
+          {storiesError ? <div className={styles.muted}>{storiesError}</div> : null}
+          {!storiesLoading && !storiesError && stories.length === 0 ? (
+            <div className={styles.muted}>No stories yet.</div>
+          ) : null}
+          {stories.length > 0 ? (
+            <div className={styles.storyGrid}>
+              {stories.map((story) => (
+                <Link key={story.id} href={`/read/${story.id}`} className={styles.storyCard}>
+                  <div className={styles.storyCardHeader}>
+                    <div className={styles.storyCardTitle}>{story.title}</div>
+                    <div className={styles.storyMeta}>{story.authorName}</div>
+                  </div>
+                  {story.description ? (
+                    <div className={styles.storyDescription}>{story.description}</div>
+                  ) : (
+                    <div className={styles.storyDescription}>No description provided.</div>
+                  )}
+                  <div className={styles.storyStats}>
+                    <span>{story.nodeCount} nodes</span>
+                    <span>{story.edgeCount} choices</span>
+                    <span>{new Date(story.updatedAt).toLocaleDateString()}</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       <section className={styles.actionsPanel}>
         <Link href="/author" className={styles.buttonPrimary}>

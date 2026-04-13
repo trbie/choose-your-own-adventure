@@ -21,7 +21,6 @@ const softButtonStyle = {
 };
 
 const READER_PREFS_KEY = "cyoa_reader_prefs_v1";
-const READER_SETTINGS_OPEN_KEY = "cyoa_reader_settings_open_v1";
 
 type ReaderPrefs = {
   fontSizePx: number;
@@ -57,15 +56,6 @@ function loadReaderPrefs(): ReaderPrefs {
     };
   } catch {
     return DEFAULT_PREFS;
-  }
-}
-
-function loadReaderSettingsOpen(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    return window.localStorage.getItem(READER_SETTINGS_OPEN_KEY) === "1";
-  } catch {
-    return false;
   }
 }
 
@@ -111,7 +101,7 @@ export default function ReaderView({ doc }: { doc: GraphDocument }) {
   const idx = useMemo(() => indexGraph(doc), [doc]);
   const startNodeId = useMemo(() => pickStartNodeId(doc, idx), [doc, idx]);
   const [prefs, setPrefs] = useState<ReaderPrefs>(() => loadReaderPrefs());
-  const [settingsOpen, setSettingsOpen] = useState<boolean>(() => loadReaderSettingsOpen());
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const [progress, setProgress] = useState<{
     history: NodeId[];
@@ -158,11 +148,18 @@ export default function ReaderView({ doc }: { doc: GraphDocument }) {
   }, [prefs]);
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem(READER_SETTINGS_OPEN_KEY, settingsOpen ? "1" : "0");
-    } catch {
-      // ignore storage failures
-    }
+    if (!settingsOpen) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setSettingsOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
   }, [settingsOpen]);
 
   const node = currentNodeId ? idx.nodeById[currentNodeId] : null;
@@ -353,91 +350,11 @@ export default function ReaderView({ doc }: { doc: GraphDocument }) {
       >
         <button
           type="button"
-          onClick={() => setSettingsOpen((v) => !v)}
-          style={{ ...softButtonStyle, width: "100%", marginBottom: settingsOpen ? 10 : 14 }}
+          onClick={() => setSettingsOpen(true)}
+          style={{ ...softButtonStyle, width: "100%", marginBottom: 14 }}
         >
-          {settingsOpen ? "Hide Reader Settings" : "Show Reader Settings"}
+          Reader Settings
         </button>
-
-        {settingsOpen ? (
-          <div style={{ display: "grid", gap: 10, marginBottom: 14 }}>
-            <label style={{ display: "grid", gap: 4 }}>
-              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Font family</span>
-              <select
-                value={prefs.fontFamily}
-                onChange={(e) => setPrefs((p) => ({ ...p, fontFamily: e.target.value }))}
-                style={{
-                  padding: "8px 10px",
-                  borderRadius: "var(--radius-sm)",
-                  border: "1px solid var(--border-subtle)",
-                  background: "var(--surface-raised)",
-                  color: "var(--text-strong)",
-                }}
-              >
-                <option value="Georgia, 'Times New Roman', serif">Serif (Georgia)</option>
-                <option value="'Segoe UI', Arial, sans-serif">Sans (Segoe UI)</option>
-                <option value="'Trebuchet MS', 'Segoe UI', sans-serif">Humanist Sans</option>
-                <option value="'Courier New', Consolas, monospace">Monospace</option>
-              </select>
-            </label>
-
-            <label style={{ display: "grid", gap: 4 }}>
-              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                Font size: {prefs.fontSizePx}px
-              </span>
-              <input
-                type="range"
-                min={14}
-                max={30}
-                value={prefs.fontSizePx}
-                onChange={(e) => setPrefs((p) => ({ ...p, fontSizePx: Number(e.target.value) }))}
-              />
-            </label>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-              <label style={{ display: "grid", gap: 4 }}>
-                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Story BG</span>
-                <input
-                  type="color"
-                  value={prefs.storyBackground}
-                  onChange={(e) => setPrefs((p) => ({ ...p, storyBackground: e.target.value }))}
-                  style={{ width: "100%", height: 34, border: "none", background: "transparent" }}
-                />
-              </label>
-              <label style={{ display: "grid", gap: 4 }}>
-                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Story Text</span>
-                <input
-                  type="color"
-                  value={prefs.storyText}
-                  onChange={(e) => setPrefs((p) => ({ ...p, storyText: e.target.value }))}
-                  style={{ width: "100%", height: 34, border: "none", background: "transparent" }}
-                />
-              </label>
-              <label style={{ display: "grid", gap: 4 }}>
-                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Choice BG</span>
-                <input
-                  type="color"
-                  value={prefs.choiceBackground}
-                  onChange={(e) => setPrefs((p) => ({ ...p, choiceBackground: e.target.value }))}
-                  style={{ width: "100%", height: 34, border: "none", background: "transparent" }}
-                />
-              </label>
-              <label style={{ display: "grid", gap: 4 }}>
-                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Choice Text</span>
-                <input
-                  type="color"
-                  value={prefs.choiceText}
-                  onChange={(e) => setPrefs((p) => ({ ...p, choiceText: e.target.value }))}
-                  style={{ width: "100%", height: 34, border: "none", background: "transparent" }}
-                />
-              </label>
-            </div>
-
-            <button type="button" onClick={() => setPrefs(DEFAULT_PREFS)} style={softButtonStyle}>
-              Reset Reader Settings
-            </button>
-          </div>
-        ) : null}
 
         <div style={{ fontWeight: 700, marginBottom: 8 }}>History</div>
         {history.length <= 1 ? (
@@ -471,6 +388,132 @@ export default function ReaderView({ doc }: { doc: GraphDocument }) {
           </ol>
         )}
       </div>
+
+      {settingsOpen ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Reader settings"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "color-mix(in srgb, black 42%, transparent)",
+            display: "grid",
+            placeItems: "center",
+            padding: 16,
+            zIndex: 60,
+          }}
+          onClick={() => setSettingsOpen(false)}
+        >
+          <div
+            style={{
+              width: "min(560px, calc(100vw - 32px))",
+              maxHeight: "calc(100vh - 32px)",
+              overflow: "auto",
+              borderRadius: "var(--radius-md)",
+              background: "var(--surface-raised)",
+              border: "1px solid var(--border-subtle)",
+              padding: 14,
+              color: "var(--text-strong)",
+              boxShadow: "0 18px 44px color-mix(in srgb, black 30%, transparent)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 10,
+                marginBottom: 12,
+              }}
+            >
+              <div style={{ fontSize: 16, fontWeight: 800 }}>Reader settings</div>
+              <button type="button" onClick={() => setSettingsOpen(false)} style={softButtonStyle}>
+                Close
+              </button>
+            </div>
+
+            <div style={{ display: "grid", gap: 10 }}>
+              <label style={{ display: "grid", gap: 4 }}>
+                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Font family</span>
+                <select
+                  value={prefs.fontFamily}
+                  onChange={(e) => setPrefs((p) => ({ ...p, fontFamily: e.target.value }))}
+                  style={{
+                    padding: "8px 10px",
+                    borderRadius: "var(--radius-sm)",
+                    border: "1px solid var(--border-subtle)",
+                    background: "var(--surface-raised)",
+                    color: "var(--text-strong)",
+                  }}
+                >
+                  <option value="Georgia, 'Times New Roman', serif">Serif (Georgia)</option>
+                  <option value="'Segoe UI', Arial, sans-serif">Sans (Segoe UI)</option>
+                  <option value="'Trebuchet MS', 'Segoe UI', sans-serif">Humanist Sans</option>
+                  <option value="'Courier New', Consolas, monospace">Monospace</option>
+                </select>
+              </label>
+
+              <label style={{ display: "grid", gap: 4 }}>
+                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                  Font size: {prefs.fontSizePx}px
+                </span>
+                <input
+                  type="range"
+                  min={14}
+                  max={30}
+                  value={prefs.fontSizePx}
+                  onChange={(e) => setPrefs((p) => ({ ...p, fontSizePx: Number(e.target.value) }))}
+                />
+              </label>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                <label style={{ display: "grid", gap: 4 }}>
+                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Story BG</span>
+                  <input
+                    type="color"
+                    value={prefs.storyBackground}
+                    onChange={(e) => setPrefs((p) => ({ ...p, storyBackground: e.target.value }))}
+                    style={{ width: "100%", height: 34, border: "none", background: "transparent" }}
+                  />
+                </label>
+                <label style={{ display: "grid", gap: 4 }}>
+                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Story Text</span>
+                  <input
+                    type="color"
+                    value={prefs.storyText}
+                    onChange={(e) => setPrefs((p) => ({ ...p, storyText: e.target.value }))}
+                    style={{ width: "100%", height: 34, border: "none", background: "transparent" }}
+                  />
+                </label>
+                <label style={{ display: "grid", gap: 4 }}>
+                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Choice BG</span>
+                  <input
+                    type="color"
+                    value={prefs.choiceBackground}
+                    onChange={(e) => setPrefs((p) => ({ ...p, choiceBackground: e.target.value }))}
+                    style={{ width: "100%", height: 34, border: "none", background: "transparent" }}
+                  />
+                </label>
+                <label style={{ display: "grid", gap: 4 }}>
+                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Choice Text</span>
+                  <input
+                    type="color"
+                    value={prefs.choiceText}
+                    onChange={(e) => setPrefs((p) => ({ ...p, choiceText: e.target.value }))}
+                    style={{ width: "100%", height: 34, border: "none", background: "transparent" }}
+                  />
+                </label>
+              </div>
+
+              <button type="button" onClick={() => setPrefs(DEFAULT_PREFS)} style={softButtonStyle}>
+                Reset Reader Settings
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {pendingChoice ? (
         <div

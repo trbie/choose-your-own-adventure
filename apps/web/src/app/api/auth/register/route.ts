@@ -3,12 +3,15 @@ import { NextResponse } from "next/server";
 
 import { createSessionCookie } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getDatabaseSetupErrorMessage, isDatabaseSetupError } from "@/lib/prisma-errors";
 import { Prisma } from "@prisma/client";
 
 export async function POST(req: Request) {
-  const body = (await req.json().catch(() => null)) as
-    | { email?: unknown; password?: unknown; displayName?: unknown }
-    | null;
+  const body = (await req.json().catch(() => null)) as {
+    email?: unknown;
+    password?: unknown;
+    displayName?: unknown;
+  } | null;
 
   const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
   const password = typeof body?.password === "string" ? body.password : "";
@@ -34,6 +37,11 @@ export async function POST(req: Request) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
       return NextResponse.json({ error: "Email already in use" }, { status: 409 });
     }
+
+    if (isDatabaseSetupError(err)) {
+      return NextResponse.json({ error: getDatabaseSetupErrorMessage() }, { status: 503 });
+    }
+
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

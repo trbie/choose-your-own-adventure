@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type { GraphIndex } from "@cyoa/shared";
 
-import { updateEdge, updateNode } from "@/features/graph/graphSlice";
+import { updateEdge, updateGraphMeta, updateNode } from "@/features/graph/graphSlice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
 import styles from "./InspectorPanel.module.css";
@@ -17,7 +17,26 @@ export default function InspectorPanel({
   width?: number;
 }) {
   const dispatch = useAppDispatch();
+  const doc = useAppSelector((s) => s.graph.doc);
   const selection = useAppSelector((s) => s.graph.selection);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const meta = doc?.meta ?? null;
+
+  useEffect(() => {
+    if (!settingsOpen) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setSettingsOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [settingsOpen]);
 
   const selectedNode = useMemo(() => {
     if (!index || selection.kind !== "node") return null;
@@ -41,6 +60,69 @@ export default function InspectorPanel({
       <div className={styles.title}>Inspector</div>
 
       {!index && <div className={styles.hint}>Loading graph…</div>}
+
+      {meta && (
+        <div className={styles.storySection}>
+          <button
+            type="button"
+            className={styles.settingsButton}
+            onClick={() => setSettingsOpen(true)}
+            aria-expanded={settingsOpen}
+          >
+            Story settings
+          </button>
+        </div>
+      )}
+
+      {meta && settingsOpen ? (
+        <div className={styles.modalBackdrop} onClick={() => setSettingsOpen(false)}>
+          <div
+            className={styles.modal}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Story settings"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className={styles.modalHeader}>
+              <div className={styles.modalTitle}>Story settings</div>
+              <button
+                type="button"
+                className={styles.modalCloseButton}
+                onClick={() => setSettingsOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+
+            <div className={styles.stack}>
+              <label className={styles.field}>
+                <div className={styles.label}>Title</div>
+                <input
+                  value={meta.title}
+                  onChange={(e) =>
+                    dispatch(updateGraphMeta({ changes: { title: e.target.value } }))
+                  }
+                  className={styles.input}
+                  placeholder="Story title"
+                />
+              </label>
+
+              <label className={styles.field}>
+                <div className={styles.label}>Description</div>
+                <textarea
+                  value={meta.description ?? ""}
+                  onChange={(e) =>
+                    dispatch(updateGraphMeta({ changes: { description: e.target.value || null } }))
+                  }
+                  rows={5}
+                  className={`${styles.textarea} ${styles.metaTextarea}`}
+                  placeholder="Short summary shown in the story browser"
+                />
+              </label>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {index && selection.kind === "none" && (
         <div className={styles.hint}>Select a node or edge to edit.</div>

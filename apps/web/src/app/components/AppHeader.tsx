@@ -28,7 +28,7 @@ export default function AppHeader() {
 
         <nav className={styles.nav} aria-label="Primary">
           {LINKS.map((link) => {
-            const active = pathname === link.href;
+            const active = pathname === link.href || pathname.startsWith(`${link.href}/`);
             const Icon = link.icon;
             return (
               <Link

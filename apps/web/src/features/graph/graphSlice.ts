@@ -30,6 +30,12 @@ export const graphSlice = createSlice({
       state.selection = { kind: "none" };
     },
 
+    updateGraphMeta(state, action: PayloadAction<{ changes: Partial<GraphDocument["meta"]> }>) {
+      if (!state.doc) return;
+      Object.assign(state.doc.meta, action.payload.changes);
+      touch(state.doc);
+    },
+
     selectNode(state, action: PayloadAction<{ id: string }>) {
       state.selection = { kind: "node", id: action.payload.id };
     },
@@ -93,6 +99,7 @@ export const graphSlice = createSlice({
 
 export const {
   setGraph,
+  updateGraphMeta,
   selectNode,
   selectEdge,
   clearSelection,
