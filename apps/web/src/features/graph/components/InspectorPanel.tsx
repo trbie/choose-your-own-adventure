@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 
-import type { GraphIndex } from "@cyoa/shared";
+import { detectCycles, type GraphIndex } from "@cyoa/shared";
 
 import { updateEdge, updateGraphMeta, updateNode } from "@/features/graph/graphSlice";
+import { setInspectorSettingsOpen } from "@/features/ui/uiSlice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
 import styles from "./InspectorPanel.module.css";
@@ -19,7 +20,7 @@ export default function InspectorPanel({
   const dispatch = useAppDispatch();
   const doc = useAppSelector((s) => s.graph.doc);
   const selection = useAppSelector((s) => s.graph.selection);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsOpen = useAppSelector((s) => s.ui.isInspectorSettingsOpen);
 
   const meta = doc?.meta ?? null;
 
@@ -28,7 +29,7 @@ export default function InspectorPanel({
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setSettingsOpen(false);
+        dispatch(setInspectorSettingsOpen(false));
       }
     };
 
@@ -36,7 +37,7 @@ export default function InspectorPanel({
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [settingsOpen]);
+  }, [dispatch, settingsOpen]);
 
   const selectedNode = useMemo(() => {
     if (!index || selection.kind !== "node") return null;
@@ -55,6 +56,8 @@ export default function InspectorPanel({
     return { chars, words };
   }, [selectedNode?.body]);
 
+  const cycleInfo = useMemo(() => (doc ? detectCycles(doc) : null), [doc]);
+
   return (
     <aside className={styles.panel} style={{ width }}>
       <div className={styles.title}>Inspector</div>
@@ -66,7 +69,7 @@ export default function InspectorPanel({
           <button
             type="button"
             className={styles.settingsButton}
-            onClick={() => setSettingsOpen(true)}
+            onClick={() => dispatch(setInspectorSettingsOpen(true))}
             aria-expanded={settingsOpen}
           >
             Story settings
@@ -75,7 +78,10 @@ export default function InspectorPanel({
       )}
 
       {meta && settingsOpen ? (
-        <div className={styles.modalBackdrop} onClick={() => setSettingsOpen(false)}>
+        <div
+          className={styles.modalBackdrop}
+          onClick={() => dispatch(setInspectorSettingsOpen(false))}
+        >
           <div
             className={styles.modal}
             role="dialog"
@@ -88,7 +94,7 @@ export default function InspectorPanel({
               <button
                 type="button"
                 className={styles.modalCloseButton}
-                onClick={() => setSettingsOpen(false)}
+                onClick={() => dispatch(setInspectorSettingsOpen(false))}
               >
                 Close
               </button>
@@ -112,7 +118,9 @@ export default function InspectorPanel({
                 <textarea
                   value={meta.description ?? ""}
                   onChange={(e) =>
-                    dispatch(updateGraphMeta({ changes: { description: e.target.value || null } }))
+                    dispatch(
+                      updateGraphMeta({ changes: { description: e.target.value || undefined } }),
+                    )
                   }
                   rows={5}
                   className={`${styles.textarea} ${styles.metaTextarea}`}
@@ -203,6 +211,13 @@ export default function InspectorPanel({
               <span>Outgoing edges</span>
               <span>{index?.outgoingEdgeIdsByNodeId[selectedNode.id]?.length ?? 0}</span>
             </div>
+            {cycleInfo?.hasCycle ? (
+              <div className={styles.warningText}>
+                {cycleInfo.nodesInCycle.includes(selectedNode.id)
+                  ? "Cycle warning: this node is part of a cycle."
+                  : `Cycle warning: graph contains ${cycleInfo.nodesInCycle.length} cycle node(s).`}
+              </div>
+            ) : null}
           </div>
         </div>
       )}

@@ -41,6 +41,7 @@ const nodeTypes = { storyNode: NodeCard };
 
 type StoryNodeData = {
   title: string;
+  excerpt: string;
   incomingCount: number;
   outgoingCount: number;
   isStartingNode: boolean;
@@ -103,6 +104,7 @@ function toRfNodes(index: GraphIndex | null, startNodeId?: string): Node<StoryNo
 
       return {
         title: n.title,
+        excerpt: n.body.replace(/\s+/g, " ").trim().slice(0, 96),
         incomingCount: incomingEdgeIds.length,
         outgoingCount: index.outgoingEdgeIdsByNodeId[n.id]?.length ?? 0,
         isStartingNode:

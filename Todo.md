@@ -8,26 +8,26 @@ Goal: ship a deployable web app where an author can build and manage branching s
 
 ### 4.2 State management
 
-- [ ] Add `authSlice` for user/session state (without storing raw JWT)
-- [ ] Add `uiSlice` for panels/modals/toolbar state
-- [ ] Add `prefsSlice` for local preferences (layout settings, last-opened graph)
-- [ ] Persist `graphSlice` drafts and `prefsSlice` to localStorage
+- [x] Add `authSlice` for user/session state (without storing raw JWT)
+- [x] Add `uiSlice` for panels/modals/toolbar state
+- [x] Add `prefsSlice` for local preferences (layout settings, last-opened graph)
+- [x] Persist `graphSlice` drafts and `prefsSlice` to localStorage
 
 ### 4.3 Components (authoring)
 
 2. `NodeCard`
-   - [ ] Show title + small excerpt
+   - [x] Show title + small excerpt
 
 3. `InspectorPanel`
-   - [ ] Show cycle warning in derived info
+   - [x] Show cycle warning in derived info
 
 4. `Toolbar`
-   - [ ] Add Auto-layout action
-   - [ ] Add Save action (server mode)
-   - [ ] Add AI: Suggest branches action (later phase)
+   - [x] Add Auto-layout action
+   - [x] Add Save action (server mode)
+   - [x] Add AI: Suggest branches action (later phase)
 
 5. `LayoutButton`
-   - [ ] Run dagre/elk layout and update node positions
+   - [x] Run dagre/elk layout and update node positions
 
 ---
 
@@ -40,6 +40,13 @@ Goal: ship a deployable web app where an author can build and manage branching s
 ### 5.2 Server persistence
 
 - [ ] Add `GraphRevision` model/table (optional versioning)
+
+---
+
+## Phase 6 — Import/Export
+
+- [ ] Add PDF import (using pre-existing python script)
+- [ ] Add PDF export
 
 ---
 
@@ -80,4 +87,5 @@ Goal: ship a deployable web app where an author can build and manage branching s
 ## Acceptance Checklist (Remaining)
 
 - [ ] Persist (local autosave + server sync)
+- [ ] Import/export (PDF)
 - [ ] Deployable demo

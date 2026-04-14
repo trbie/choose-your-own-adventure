@@ -3,7 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 
 import type { GraphIndex } from "@cyoa/shared";
-import { Download, FilePlus2, RotateCcw, Upload } from "lucide-react";
+import { Download, FilePlus2, RotateCcw, Save, Sparkles, Upload } from "lucide-react";
+
+import { setToolbarSearchOpen } from "@/features/ui/uiSlice";
+import { useAppDispatch } from "@/store/hooks";
+
+import LayoutButton from "./LayoutButton";
 
 const actionStyle = {
   height: 36,
@@ -39,17 +44,26 @@ export default function Toolbar({
   index,
   onSelectNode,
   onNewNode,
+  onAutoLayout,
   onExport,
   onImport,
   onReset,
+  onSave,
+  saveState,
+  showServerSaveAction,
 }: {
   index: GraphIndex | null;
   onSelectNode: (id: string) => void;
   onNewNode: () => void;
+  onAutoLayout: () => void;
   onExport: () => void;
   onImport: (file: File) => void;
   onReset: () => void;
+  onSave: () => void;
+  saveState: "idle" | "saving" | "saved" | "error";
+  showServerSaveAction: boolean;
 }) {
+  const dispatch = useAppDispatch();
   const [query, setQuery] = useState("");
   const [activeMatchIndex, setActiveMatchIndex] = useState(0);
 
@@ -91,18 +105,22 @@ export default function Toolbar({
       .slice(0, 8);
   }, [index, matchedNodeIds, normalizedQuery]);
 
-  useEffect(() => {
-    setActiveMatchIndex(0);
-  }, [normalizedQuery, matchedNodeIds.length]);
+  const hasQuery = normalizedQuery.length > 0;
+  const hasMatches = matchedNodeIds.length > 0;
+  const currentMatchIndex = hasMatches ? Math.min(activeMatchIndex, matchedNodeIds.length - 1) : 0;
 
   useEffect(() => {
     if (!normalizedQuery || matchedNodeIds.length === 0) return;
-    const nextId = matchedNodeIds[activeMatchIndex] ?? matchedNodeIds[0];
+    const nextId = matchedNodeIds[currentMatchIndex] ?? matchedNodeIds[0];
     if (nextId) onSelectNode(nextId);
-  }, [activeMatchIndex, matchedNodeIds, normalizedQuery, onSelectNode]);
+  }, [currentMatchIndex, matchedNodeIds, normalizedQuery, onSelectNode]);
 
-  const hasQuery = normalizedQuery.length > 0;
-  const hasMatches = matchedNodeIds.length > 0;
+  useEffect(() => {
+    dispatch(setToolbarSearchOpen(normalizedQuery.length > 0));
+    return () => {
+      dispatch(setToolbarSearchOpen(false));
+    };
+  }, [dispatch, normalizedQuery]);
 
   const jumpMatch = (direction: 1 | -1) => {
     if (!hasMatches) return;
@@ -146,7 +164,10 @@ export default function Toolbar({
           <input
             type="search"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setActiveMatchIndex(0);
+            }}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
@@ -189,7 +210,7 @@ export default function Toolbar({
             {!hasQuery
               ? ""
               : hasMatches
-                ? `${activeMatchIndex + 1}/${matchedNodeIds.length}`
+                ? `${currentMatchIndex + 1}/${matchedNodeIds.length}`
                 : "0 matches"}
           </div>
 
@@ -218,7 +239,7 @@ export default function Toolbar({
               {hasMatches && (
                 <div style={{ maxHeight: 300, overflowY: "auto" }}>
                   {matchedNodePreviews.map((item) => {
-                    const isActive = item.listIndex === activeMatchIndex;
+                    const isActive = item.listIndex === currentMatchIndex;
                     return (
                       <button
                         key={item.id}
@@ -281,6 +302,35 @@ export default function Toolbar({
         >
           <RotateCcw size={15} />
           Reset
+        </button>
+
+        <LayoutButton
+          onClick={onAutoLayout}
+          disabled={!index || Object.keys(index.nodeById).length < 2}
+        />
+
+        {showServerSaveAction ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSave();
+            }}
+            style={{ ...actionStyle, minWidth: 92 }}
+          >
+            <Save size={15} />
+            {saveState === "saving" ? "Saving" : saveState === "saved" ? "Saved" : "Save"}
+          </button>
+        ) : null}
+
+        <button
+          type="button"
+          disabled
+          title="Coming in Phase 7"
+          style={{ ...actionStyle, opacity: 0.58 }}
+        >
+          <Sparkles size={15} />
+          AI: Suggest branches
         </button>
 
         <button

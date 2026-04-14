@@ -6,7 +6,11 @@ import { Provider } from "react-redux";
 
 import type { GraphDocument } from "@cyoa/shared";
 
+import { setAuthUser, type AuthUser } from "@/features/auth/authSlice";
+import { loadDraftGraph, saveDraftGraph } from "@/features/graph/graphPersistence";
 import { setGraph } from "@/features/graph/graphSlice";
+import { loadPrefs, savePrefs } from "@/features/prefs/prefsPersistence";
+import { hydratePrefs, setLastOpenedGraphId } from "@/features/prefs/prefsSlice";
 import { makeStore, type AppStore } from "@/store/makeStore";
 
 function getAuthorGraphIdFromPathname(pathname: string): string | null {
@@ -18,10 +22,88 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [store] = useState<AppStore>(() => makeStore());
   const authorGraphId = getAuthorGraphIdFromPathname(pathname);
+  const enableServer = process.env.NEXT_PUBLIC_ENABLE_SERVER === "true";
+
+  useEffect(() => {
+    const loadedPrefs = loadPrefs();
+    if (loadedPrefs) {
+      store.dispatch(hydratePrefs(loadedPrefs));
+    }
+
+    let pendingDraftSave: ReturnType<typeof setTimeout> | null = null;
+    let pendingPrefsSave: ReturnType<typeof setTimeout> | null = null;
+    let lastDraftUpdatedAt: string | null = store.getState().graph.doc?.meta.updatedAt ?? null;
+    let lastSavedPrefs = JSON.stringify(store.getState().prefs);
+
+    const unsubscribe = store.subscribe(() => {
+      const state = store.getState();
+
+      const doc = state.graph.doc;
+      if (doc && doc.meta.updatedAt !== lastDraftUpdatedAt) {
+        if (pendingDraftSave) clearTimeout(pendingDraftSave);
+        pendingDraftSave = setTimeout(() => {
+          saveDraftGraph(doc);
+          lastDraftUpdatedAt = doc.meta.updatedAt;
+        }, 700);
+      }
+
+      const prefsJson = JSON.stringify(state.prefs);
+      if (prefsJson !== lastSavedPrefs) {
+        if (pendingPrefsSave) clearTimeout(pendingPrefsSave);
+        pendingPrefsSave = setTimeout(() => {
+          savePrefs(state.prefs);
+          lastSavedPrefs = prefsJson;
+        }, 220);
+      }
+    });
+
+    return () => {
+      if (pendingDraftSave) clearTimeout(pendingDraftSave);
+      if (pendingPrefsSave) clearTimeout(pendingPrefsSave);
+      unsubscribe();
+    };
+  }, [store]);
 
   useEffect(() => {
     if (!authorGraphId) return;
-    const enableServer = process.env.NEXT_PUBLIC_ENABLE_SERVER === "true";
+
+    store.dispatch(setLastOpenedGraphId(authorGraphId));
+
+    const doc = store.getState().graph.doc;
+    if (doc) return;
+
+    const draft = loadDraftGraph();
+    if (draft) {
+      store.dispatch(setGraph(draft));
+    }
+  }, [authorGraphId, store]);
+
+  useEffect(() => {
+    if (!enableServer) {
+      store.dispatch(setAuthUser(null));
+      return;
+    }
+
+    let didCancel = false;
+
+    void (async () => {
+      try {
+        const meRes = await fetch("/api/auth/me", { cache: "no-store" });
+        const meData = (await meRes.json().catch(() => ({}))) as { user?: AuthUser | null };
+        if (didCancel) return;
+        store.dispatch(setAuthUser(meRes.ok ? (meData.user ?? null) : null));
+      } catch {
+        if (!didCancel) store.dispatch(setAuthUser(null));
+      }
+    })();
+
+    return () => {
+      didCancel = true;
+    };
+  }, [enableServer, pathname, store]);
+
+  useEffect(() => {
+    if (!authorGraphId) return;
     if (!enableServer) return;
 
     let didCancel = false;
@@ -33,7 +115,8 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     void (async () => {
       try {
         const meRes = await fetch("/api/auth/me", { cache: "no-store" });
-        const meData = (await meRes.json().catch(() => ({}))) as { user?: { id: string } | null };
+        const meData = (await meRes.json().catch(() => ({}))) as { user?: AuthUser | null };
+        store.dispatch(setAuthUser(meRes.ok ? (meData.user ?? null) : null));
         if (!meRes.ok || !meData.user) return;
 
         const res = await fetch(`/api/graph/${authorGraphId}`, { cache: "no-store" });
@@ -79,7 +162,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       if (pendingServerSync) clearTimeout(pendingServerSync);
       unsubscribe();
     };
-  }, [authorGraphId, store]);
+  }, [authorGraphId, enableServer, store]);
 
   return <Provider store={store}>{children}</Provider>;
 }

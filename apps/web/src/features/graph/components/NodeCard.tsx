@@ -4,6 +4,7 @@ import { Handle, Position, type NodeProps } from "reactflow";
 
 type Data = {
   title: string;
+  excerpt: string;
   incomingCount: number;
   outgoingCount: number;
   isStartingNode: boolean;
@@ -65,6 +66,18 @@ export default function NodeCard({ data, selected }: NodeProps<Data>) {
       />
       <div style={{ fontWeight: 600, fontSize: 13, lineHeight: 1.2, marginBottom: 4 }}>
         {data.title}
+      </div>
+      <div
+        style={{
+          fontSize: 11,
+          opacity: 0.8,
+          marginBottom: 5,
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
+        {data.excerpt || "(No content)"}
       </div>
       <div style={{ fontSize: 11, opacity: 0.75 }}>
         {status}
