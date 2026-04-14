@@ -9,10 +9,17 @@ import AuthorShell from "@/features/graph/components/AuthorShell";
 export default function AuthorStoryPage() {
   const params = useParams<{ id: string }>();
   const storyId = params.id;
+  const enableServer = process.env.NEXT_PUBLIC_ENABLE_SERVER === "true";
   const [loading, setLoading] = useState(true);
   const [accessError, setAccessError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!enableServer) {
+      setLoading(false);
+      setAccessError("Server sync is disabled. Open /author for local editing.");
+      return;
+    }
+
     let cancelled = false;
 
     const validateAccess = async () => {
@@ -46,7 +53,7 @@ export default function AuthorStoryPage() {
     return () => {
       cancelled = true;
     };
-  }, [storyId]);
+  }, [enableServer, storyId]);
 
   if (loading) {
     return <div style={{ padding: 24 }}>Checking story access…</div>;

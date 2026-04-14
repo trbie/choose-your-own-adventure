@@ -29,6 +29,7 @@ model Graph {
   title       String
   description String?
   startNodeId String?
+  isPublic    Boolean @default(true)
 
   nodes GraphNode[]
   edges GraphEdge[]

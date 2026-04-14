@@ -11,6 +11,7 @@ export default function ReadStoryPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const storyId = params.id;
+  const enableServer = process.env.NEXT_PUBLIC_ENABLE_SERVER === "true";
 
   const [doc, setDoc] = useState<GraphDocument | null>(null);
   const [title, setTitle] = useState<string>("Story");
@@ -19,6 +20,12 @@ export default function ReadStoryPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!enableServer) {
+      setLoading(false);
+      setError("Server sync is disabled. Open /read for local reading.");
+      return;
+    }
+
     let cancelled = false;
 
     const loadStory = async () => {
@@ -28,7 +35,7 @@ export default function ReadStoryPage() {
         const res = await fetch(`/api/stories/${storyId}`, { cache: "no-store" });
         const data = (await res.json().catch(() => ({}))) as {
           doc?: GraphDocument;
-          owner?: { displayName: string | null; email: string };
+          authorName?: string;
           error?: string;
         } | null;
 
@@ -37,7 +44,7 @@ export default function ReadStoryPage() {
 
         setDoc(data?.doc ?? null);
         setTitle(data?.doc?.meta.title ?? "Story");
-        setAuthorName(data?.owner?.displayName?.trim() || data?.owner?.email || "Unknown author");
+        setAuthorName(data?.authorName?.trim() || "Unknown author");
       } catch (err) {
         if (cancelled) return;
         const message = err instanceof Error ? err.message : "Failed to load story";
@@ -52,7 +59,7 @@ export default function ReadStoryPage() {
     return () => {
       cancelled = true;
     };
-  }, [storyId]);
+  }, [enableServer, storyId]);
 
   if (loading) {
     return <div style={{ padding: 24 }}>Loading…</div>;

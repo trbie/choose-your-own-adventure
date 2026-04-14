@@ -4,9 +4,13 @@ import { NextResponse } from "next/server";
 import { createSessionCookie } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getDatabaseSetupErrorMessage, isDatabaseSetupError } from "@/lib/prisma-errors";
+import { serverModeGuard } from "@/lib/server-mode";
 import { Prisma } from "@prisma/client";
 
 export async function POST(req: Request) {
+  const guarded = serverModeGuard();
+  if (guarded) return guarded;
+
   const body = (await req.json().catch(() => null)) as {
     email?: unknown;
     password?: unknown;

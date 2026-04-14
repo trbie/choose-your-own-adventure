@@ -4,8 +4,12 @@ import { NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/auth";
 import { dbToGraphDocument, docToDbEdges, docToDbNodes } from "@/lib/graphDb";
 import { prisma } from "@/lib/prisma";
+import { serverModeGuard } from "@/lib/server-mode";
 
 export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) {
+  const guarded = serverModeGuard();
+  if (guarded) return guarded;
+
   const user = await requireSessionUser();
   const { id } = await ctx.params;
 
@@ -20,6 +24,9 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
 }
 
 export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const guarded = serverModeGuard();
+  if (guarded) return guarded;
+
   const user = await requireSessionUser();
   const { id } = await ctx.params;
 
@@ -28,7 +35,10 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
     return NextResponse.json({ error: "Invalid graph" }, { status: 400 });
   }
 
-  const existing = await prisma.graph.findFirst({ where: { id, ownerId: user.id }, select: { id: true } });
+  const existing = await prisma.graph.findFirst({
+    where: { id, ownerId: user.id },
+    select: { id: true, isPublic: true },
+  });
   if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   await prisma.$transaction(async (tx) => {
@@ -38,6 +48,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
         title: doc.meta.title,
         description: doc.meta.description ?? null,
         startNodeId: doc.meta.startNodeId ?? null,
+        isPublic: doc.meta.isPublic ?? existing.isPublic,
       },
     });
 

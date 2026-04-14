@@ -7,6 +7,8 @@ import { useEffect, useState } from "react";
 
 import type { GraphDocument } from "@cyoa/shared";
 
+import AuthorShell from "@/features/graph/components/AuthorShell";
+
 import styles from "./page.module.css";
 
 type StoryCard = {
@@ -101,6 +103,10 @@ export default function AuthorPage() {
     setBusyStoryId(storyId);
     router.push(`/author/${storyId}`);
   };
+
+  if (!enableServer) {
+    return <AuthorShell />;
+  }
 
   return (
     <main className={styles.page}>

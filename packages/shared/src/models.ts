@@ -37,6 +37,7 @@ export interface GraphMeta {
   createdAt: string; // ISO
   updatedAt: string; // ISO
   startNodeId?: NodeId;
+  isPublic?: boolean;
 }
 
 export interface GraphDocument {

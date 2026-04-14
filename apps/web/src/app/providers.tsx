@@ -79,6 +79,38 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   }, [authorGraphId, store]);
 
   useEffect(() => {
+    if (enableServer) return;
+    if (!pathname.startsWith("/author")) return;
+
+    const existing = store.getState().graph.doc;
+    if (existing) return;
+
+    const draft = loadDraftGraph();
+    if (draft) {
+      store.dispatch(setGraph(draft));
+      return;
+    }
+
+    let didCancel = false;
+
+    void (async () => {
+      try {
+        const seedRes = await fetch("/seed/graph.cot.json", { cache: "no-store" });
+        const seed = (await seedRes.json().catch(() => null)) as GraphDocument | null;
+        if (didCancel) return;
+        if (!seedRes.ok || !seed) return;
+        store.dispatch(setGraph(seed));
+      } catch {
+        // ignore
+      }
+    })();
+
+    return () => {
+      didCancel = true;
+    };
+  }, [enableServer, pathname, store]);
+
+  useEffect(() => {
     if (!enableServer) {
       store.dispatch(setAuthUser(null));
       return;

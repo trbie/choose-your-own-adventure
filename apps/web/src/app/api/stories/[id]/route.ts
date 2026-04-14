@@ -1,12 +1,15 @@
 import type { GraphDocument } from "@cyoa/shared";
 import { NextResponse } from "next/server";
 
-import { requireSessionUser } from "@/lib/auth";
+import { getSessionUser } from "@/lib/auth";
 import { dbToGraphDocument } from "@/lib/graphDb";
 import { prisma } from "@/lib/prisma";
+import { serverModeGuard } from "@/lib/server-mode";
 
 export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) {
-  await requireSessionUser();
+  const guarded = serverModeGuard();
+  if (guarded) return guarded;
+
   const { id } = await ctx.params;
 
   const graph = await prisma.graph.findUnique({
@@ -18,15 +21,18 @@ export async function GET(_: Request, ctx: { params: Promise<{ id: string }> }) 
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  if (!graph.isPublic) {
+    const user = await getSessionUser();
+    if (!user || user.id !== graph.ownerId) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+  }
+
   const doc: GraphDocument = dbToGraphDocument(graph);
 
   return NextResponse.json({
     id: graph.id,
-    owner: {
-      id: graph.owner.id,
-      email: graph.owner.email,
-      displayName: graph.owner.displayName,
-    },
+    authorName: graph.owner.displayName?.trim() || "Unknown author",
     doc,
   });
 }

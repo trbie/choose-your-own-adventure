@@ -127,6 +127,17 @@ export default function InspectorPanel({
                   placeholder="Short summary shown in the story browser"
                 />
               </label>
+
+              <label className={styles.checkboxRow}>
+                <input
+                  type="checkbox"
+                  checked={meta.isPublic ?? true}
+                  onChange={(e) =>
+                    dispatch(updateGraphMeta({ changes: { isPublic: e.target.checked } }))
+                  }
+                />
+                <span className={styles.label}>Public (listed in Reader)</span>
+              </label>
             </div>
           </div>
         </div>

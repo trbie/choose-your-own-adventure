@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import type { GraphDocument } from "@cyoa/shared";
+
+import { loadDraftGraph } from "@/features/graph/graphPersistence";
+import ReaderView from "@/features/reader/components/ReaderView";
+
 type StoryCard = {
   id: string;
   title: string;
@@ -11,7 +16,10 @@ type StoryCard = {
 };
 
 export default function ReadPage() {
+  const enableServer = process.env.NEXT_PUBLIC_ENABLE_SERVER === "true";
+
   const [stories, setStories] = useState<StoryCard[]>([]);
+  const [localDoc, setLocalDoc] = useState<GraphDocument | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -20,6 +28,20 @@ export default function ReadPage() {
       setLoading(true);
       setError(null);
       try {
+        if (!enableServer) {
+          const draft = loadDraftGraph();
+          if (draft) {
+            setLocalDoc(draft);
+            return;
+          }
+
+          const seedRes = await fetch("/seed/graph.cot.json", { cache: "no-store" });
+          const seed = (await seedRes.json().catch(() => null)) as GraphDocument | null;
+          if (!seedRes.ok || !seed) throw new Error("Failed to load seed story");
+          setLocalDoc(seed);
+          return;
+        }
+
         const res = await fetch("/api/stories", { cache: "no-store" });
         const data = (await res.json().catch(() => ({}))) as {
           stories?: StoryCard[];
@@ -36,7 +58,14 @@ export default function ReadPage() {
     };
 
     void load();
-  }, []);
+  }, [enableServer]);
+
+  if (!enableServer) {
+    if (loading) return <div style={{ padding: 24 }}>Loading…</div>;
+    if (error) return <div style={{ padding: 24, color: "var(--text-muted)" }}>{error}</div>;
+    if (!localDoc) return <div style={{ padding: 24 }}>Story not found.</div>;
+    return <ReaderView doc={localDoc} />;
+  }
 
   return (
     <main
