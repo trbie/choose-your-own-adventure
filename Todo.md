@@ -35,7 +35,7 @@ Goal: ship a deployable web app where an author can build and manage branching s
 
 ### 5.1 Local-first autosave
 
-- [ ] Autosave current `GraphDocument` to localStorage on change (debounced)
+- [x] Autosave current `GraphDocument` to localStorage on change (debounced)
 
 ### 5.2 Server persistence
 
@@ -70,22 +70,22 @@ Goal: ship a deployable web app where an author can build and manage branching s
 
 ## Phase 8 — Quality + Safety
 
-- [ ] Make `typecheck` and `lint` pass
-- [ ] Add E2E smoke test: create node -> connect -> export -> import
+- [x] Make `typecheck` and `lint` pass
+- [x] Add E2E smoke test: create node -> connect -> export -> import
 - [ ] Add/confirm content policy for public deployment (avoid publishing original book text)
 
 ---
 
 ## Phase 9 — Deploy
 
-- [ ] Full-stack deploy (Vercel or Netlify)
-- [ ] Configure production DB + env vars
-- [ ] Replace boilerplate deploy docs in README with actual project deployment steps
+- [x] Full-stack deploy (Vercel or Netlify)
+- [x] Configure production DB + env vars
+- [x] Replace boilerplate deploy docs in README with actual project deployment steps
 
 ---
 
 ## Acceptance Checklist (Remaining)
 
-- [ ] Persist (local autosave + server sync)
+- [x] Persist (local autosave + server sync)
 - [ ] Import/export (PDF)
-- [ ] Deployable demo
+- [x] Deployable demo

@@ -22,7 +22,7 @@ export default function ReadStoryPage() {
   useEffect(() => {
     if (!enableServer) {
       setLoading(false);
-      setError("Server sync is disabled. Open /read for local reading.");
+      setError("This story is unavailable right now.");
       return;
     }
 

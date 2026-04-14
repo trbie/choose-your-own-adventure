@@ -8,9 +8,10 @@ import styles from "./page.module.css";
 
 export default function Home() {
   const enableServer = process.env.NEXT_PUBLIC_ENABLE_SERVER === "true";
-  const [email, setEmail] = useState("test@example.com");
-  const [password, setPassword] = useState("password123");
-  const [displayName, setDisplayName] = useState("Test");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [me, setMe] = useState<{ id: string; email: string; displayName: string | null } | null>(
     null,
   );
@@ -129,8 +130,7 @@ export default function Home() {
         </div>
         {!enableServer ? (
           <div className={styles.muted}>
-            Server sync is disabled (local-only mode). Set <code>NEXT_PUBLIC_ENABLE_SERVER</code> to
-            &quot;true&quot; and configure Supabase env vars to enable login + cross-device saving.
+            Sign in to save your stories and keep them available on other devices.
           </div>
         ) : me ? (
           <div className={styles.inlineRow}>
@@ -155,18 +155,29 @@ export default function Home() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
+                autoComplete="off"
                 className={styles.input}
               />
             </label>
             <label className={styles.field}>
               <div className={styles.fieldLabel}>Password</div>
-              <input
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                type="password"
-                placeholder="8+ characters"
-                className={styles.input}
-              />
+              <div className={styles.passwordRow}>
+                <input
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  type={showPassword ? "text" : "password"}
+                  placeholder="8+ characters"
+                  autoComplete="new-password"
+                  className={styles.input}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((current) => !current)}
+                  className={styles.passwordToggle}
+                >
+                  {showPassword ? "Hide" : "Show"}
+                </button>
+              </div>
             </label>
             <label className={styles.field}>
               <div className={styles.fieldLabel}>Display name (register only)</div>
@@ -174,6 +185,7 @@ export default function Home() {
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="Optional"
+                autoComplete="off"
                 className={styles.input}
               />
             </label>
