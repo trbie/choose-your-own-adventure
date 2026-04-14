@@ -1,6 +1,6 @@
 "use client";
 
-import { BadgeCheck, LogIn, LogOut, UserPlus, WalletCards } from "lucide-react";
+import { LogIn, LogOut, UserPlus, WalletCards } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import styles from "./page.module.css";
@@ -15,9 +15,10 @@ export default function AccountPage() {
   const enableServer = process.env.NEXT_PUBLIC_ENABLE_SERVER === "true";
 
   const [me, setMe] = useState<MeUser | null>(null);
-  const [email, setEmail] = useState("test@example.com");
-  const [password, setPassword] = useState("password123");
-  const [displayName, setDisplayName] = useState("Test");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,15 +70,8 @@ export default function AccountPage() {
   return (
     <main className={styles.page}>
       <section className={styles.hero}>
-        <div className={styles.pill}>
-          <BadgeCheck size={13} />
-          API-backed account
-        </div>
         <h1>Account</h1>
-        <p>
-          This page only includes features implemented in the current API: session lookup, login,
-          register, and logout.
-        </p>
+        <p>Sign in, create an account, or log out from this workspace.</p>
       </section>
 
       <section className={styles.card}>
@@ -86,10 +80,7 @@ export default function AccountPage() {
           Session
         </h2>
         {!enableServer ? (
-          <p className={styles.muted}>
-            Server sync is disabled. Set <code>NEXT_PUBLIC_ENABLE_SERVER</code> to <code>true</code>{" "}
-            to use account endpoints.
-          </p>
+          <p className={styles.muted}>Sign in to access your account.</p>
         ) : me ? (
           <div className={styles.stack}>
             <div className={styles.row}>
@@ -119,18 +110,29 @@ export default function AccountPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 className={styles.input}
                 placeholder="you@example.com"
+                autoComplete="off"
               />
             </label>
 
             <label className={styles.field}>
               <span className={styles.label}>Password</span>
-              <input
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                type="password"
-                className={styles.input}
-                placeholder="8+ characters"
-              />
+              <div className={styles.passwordRow}>
+                <input
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  type={showPassword ? "text" : "password"}
+                  className={styles.input}
+                  placeholder="8+ characters"
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((current) => !current)}
+                  className={styles.passwordToggle}
+                >
+                  {showPassword ? "Hide" : "Show"}
+                </button>
+              </div>
             </label>
 
             <label className={styles.field}>
@@ -140,6 +142,7 @@ export default function AccountPage() {
                 onChange={(e) => setDisplayName(e.target.value)}
                 className={styles.input}
                 placeholder="Optional"
+                autoComplete="off"
               />
             </label>
 

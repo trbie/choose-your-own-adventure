@@ -54,17 +54,38 @@
   gap: 6px;
 }
 
+.passwordRow {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
 .label {
   font-size: 12px;
   color: var(--text-muted);
 }
 
 .input {
+  flex: 1;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   padding: 10px 11px;
   background: var(--surface-soft);
   color: var(--text-strong);
+}
+
+.passwordToggle {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--text-strong);
+  padding: 0 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.passwordToggle:hover {
+  border-color: var(--border-strong);
 }
 
 .actions {

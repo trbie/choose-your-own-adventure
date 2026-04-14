@@ -16,7 +16,7 @@ export default function AuthorStoryPage() {
   useEffect(() => {
     if (!enableServer) {
       setLoading(false);
-      setAccessError("Server sync is disabled. Open /author for local editing.");
+      setAccessError("This story is unavailable right now.");
       return;
     }
 

@@ -123,10 +123,7 @@ export default function AuthorPage() {
 
       {!enableServer ? (
         <section className={styles.card}>
-          <div className={styles.muted}>
-            Server sync is disabled. Set <code>NEXT_PUBLIC_ENABLE_SERVER</code> to <code>true</code>{" "}
-            to select stories.
-          </div>
+          <div className={styles.muted}>Sign in to open and edit your stories.</div>
         </section>
       ) : !me ? (
         <section className={styles.card}>
