@@ -1,15 +1,34 @@
 "use client";
 
+import { BookOpenText, PenSquare, ShieldCheck, Sparkles, UserCircle2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+
+import styles from "./page.module.css";
 
 export default function Home() {
   const enableServer = process.env.NEXT_PUBLIC_ENABLE_SERVER === "true";
   const [email, setEmail] = useState("test@example.com");
   const [password, setPassword] = useState("password123");
   const [displayName, setDisplayName] = useState("Test");
-  const [me, setMe] = useState<{ id: string; email: string; displayName: string | null } | null>(null);
+  const [me, setMe] = useState<{ id: string; email: string; displayName: string | null } | null>(
+    null,
+  );
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [stories, setStories] = useState<
+    Array<{
+      id: string;
+      title: string;
+      description: string | null;
+      authorName: string;
+      updatedAt: string;
+      nodeCount: number;
+      edgeCount: number;
+    }>
+  >([]);
+  const [storiesLoading, setStoriesLoading] = useState(false);
+  const [storiesError, setStoriesError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!enableServer) return;
@@ -21,8 +40,47 @@ export default function Home() {
       });
   }, [enableServer]);
 
+  useEffect(() => {
+    if (!enableServer || !me) {
+      setStories([]);
+      setStoriesError(null);
+      return;
+    }
+
+    const loadStories = async () => {
+      setStoriesLoading(true);
+      setStoriesError(null);
+      try {
+        const res = await fetch("/api/stories", { cache: "no-store" });
+        const data = (await res.json().catch(() => ({}))) as {
+          stories?: Array<{
+            id: string;
+            title: string;
+            description: string | null;
+            authorName: string;
+            updatedAt: string;
+            nodeCount: number;
+            edgeCount: number;
+          }>;
+          error?: string;
+        } | null;
+
+        if (!res.ok) throw new Error(data?.error || "Failed to load stories");
+        setStories(data?.stories ?? []);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to load stories";
+        setStoriesError(message);
+      } finally {
+        setStoriesLoading(false);
+      }
+    };
+
+    void loadStories();
+  }, [enableServer, me]);
+
   const callAuth = async (path: string, body: unknown) => {
     setBusy(true);
+    setError(null);
     try {
       const res = await fetch(path, {
         method: "POST",
@@ -32,7 +90,9 @@ export default function Home() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || "Request failed");
       setMe(data.user ?? null);
-      window.location.href = "/author";
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Request failed";
+      setError(message);
     } finally {
       setBusy(false);
     }
@@ -49,155 +109,149 @@ export default function Home() {
   };
 
   return (
-    <main style={{ padding: 24, fontFamily: "var(--font-geist-sans)" }}>
-      <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>Choose Your Own Adventure</h1>
-      <p style={{ opacity: 0.8, marginBottom: 16 }}>
-        Open the authoring tool to view and edit the story graph.
-      </p>
+    <main className={styles.page}>
+      <section className={styles.hero}>
+        <div className={styles.heroBadge}>
+          <Sparkles size={14} />
+          Storycraft Workspace
+        </div>
+        <h1>Choose Your Own Adventure</h1>
+        <p>
+          Build branching stories in Author mode, test the flow in Reader mode, and keep your graph
+          easy to navigate as it grows.
+        </p>
+      </section>
 
-      <div
-        style={{
-          border: "1px solid #e5e7eb",
-          borderRadius: 12,
-          padding: 16,
-          maxWidth: 520,
-          marginBottom: 16,
-        }}
-      >
-        <div style={{ fontWeight: 600, marginBottom: 8 }}>Account</div>
+      <section className={styles.card}>
+        <div className={styles.cardTitle}>
+          <ShieldCheck size={16} />
+          Account
+        </div>
         {!enableServer ? (
-          <div style={{ opacity: 0.8 }}>
-            Server sync is disabled (local-only mode). Set <code>NEXT_PUBLIC_ENABLE_SERVER</code> to &quot;true&quot; and
-            configure Supabase env vars to enable login + cross-device saving.
+          <div className={styles.muted}>
+            Server sync is disabled (local-only mode). Set <code>NEXT_PUBLIC_ENABLE_SERVER</code> to
+            &quot;true&quot; and configure Supabase env vars to enable login + cross-device saving.
           </div>
         ) : me ? (
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <div style={{ opacity: 0.8 }}>
-              Signed in as <span style={{ fontWeight: 600 }}>{me.email}</span>
+          <div className={styles.inlineRow}>
+            <div className={styles.muted}>
+              Signed in as <span className={styles.strong}>{me.email}</span>
             </div>
-            <div style={{ flex: 1 }} />
+            <div className={styles.spacer} />
             <button
               type="button"
               onClick={() => void logout()}
               disabled={busy}
-              style={{
-                padding: "8px 10px",
-                borderRadius: 8,
-                border: "1px solid #d1d5db",
-                background: "white",
-                color: "#111827",
-                cursor: "pointer",
-              }}
+              className={styles.buttonSecondary}
             >
               Logout
             </button>
           </div>
         ) : (
-          <div style={{ display: "grid", gap: 10 }}>
-            <label style={{ display: "grid", gap: 4 }}>
-              <div style={{ fontSize: 12, opacity: 0.7 }}>Email</div>
+          <div className={styles.formGrid}>
+            <label className={styles.field}>
+              <div className={styles.fieldLabel}>Email</div>
               <input
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                style={{
-                  padding: "8px 10px",
-                  borderRadius: 8,
-                  border: "1px solid #d1d5db",
-                }}
+                className={styles.input}
               />
             </label>
-            <label style={{ display: "grid", gap: 4 }}>
-              <div style={{ fontSize: 12, opacity: 0.7 }}>Password</div>
+            <label className={styles.field}>
+              <div className={styles.fieldLabel}>Password</div>
               <input
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 type="password"
                 placeholder="8+ characters"
-                style={{
-                  padding: "8px 10px",
-                  borderRadius: 8,
-                  border: "1px solid #d1d5db",
-                }}
+                className={styles.input}
               />
             </label>
-            <label style={{ display: "grid", gap: 4 }}>
-              <div style={{ fontSize: 12, opacity: 0.7 }}>Display name (register only)</div>
+            <label className={styles.field}>
+              <div className={styles.fieldLabel}>Display name (register only)</div>
               <input
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="Optional"
-                style={{
-                  padding: "8px 10px",
-                  borderRadius: 8,
-                  border: "1px solid #d1d5db",
-                }}
+                className={styles.input}
               />
             </label>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div className={styles.actions}>
               <button
                 type="button"
                 onClick={() => void callAuth("/api/auth/login", { email, password })}
                 disabled={busy}
-                style={{
-                  padding: "8px 10px",
-                  borderRadius: 8,
-                  border: "1px solid #d1d5db",
-                  background: "white",
-                  color: "#111827",
-                  cursor: "pointer",
-                }}
+                className={styles.buttonPrimary}
               >
                 Login
               </button>
               <button
                 type="button"
-                onClick={() => void callAuth("/api/auth/register", { email, password, displayName })}
+                onClick={() =>
+                  void callAuth("/api/auth/register", { email, password, displayName })
+                }
                 disabled={busy}
-                style={{
-                  padding: "8px 10px",
-                  borderRadius: 8,
-                  border: "1px solid #d1d5db",
-                  background: "white",
-                  color: "#111827",
-                  cursor: "pointer",
-                }}
+                className={styles.buttonSecondary}
               >
                 Register
               </button>
             </div>
           </div>
         )}
-      </div>
+        {error ? <div className={styles.muted}>{error}</div> : null}
+      </section>
 
-      <Link
-        href="/author"
-        style={{
-          display: "inline-block",
-          padding: "10px 14px",
-          borderRadius: 8,
-          border: "1px solid #d1d5db",
-          background: "white",
-          color: "#111827",
-        }}
-      >
-        Go to Author
-      </Link>
+      {enableServer && me ? (
+        <section className={styles.card}>
+          <div className={styles.cardTitle}>Browse stories</div>
+          <div className={styles.muted} style={{ marginBottom: 12 }}>
+            Jump into stories created by other authors on this workspace.
+          </div>
+          {storiesLoading ? <div className={styles.muted}>Loading stories…</div> : null}
+          {storiesError ? <div className={styles.muted}>{storiesError}</div> : null}
+          {!storiesLoading && !storiesError && stories.length === 0 ? (
+            <div className={styles.muted}>No stories yet.</div>
+          ) : null}
+          {stories.length > 0 ? (
+            <div className={styles.storyGrid}>
+              {stories.map((story) => (
+                <Link key={story.id} href={`/read/${story.id}`} className={styles.storyCard}>
+                  <div className={styles.storyCardHeader}>
+                    <div className={styles.storyCardTitle}>{story.title}</div>
+                    <div className={styles.storyMeta}>{story.authorName}</div>
+                  </div>
+                  {story.description ? (
+                    <div className={styles.storyDescription}>{story.description}</div>
+                  ) : (
+                    <div className={styles.storyDescription}>No description provided.</div>
+                  )}
+                  <div className={styles.storyStats}>
+                    <span>{story.nodeCount} nodes</span>
+                    <span>{story.edgeCount} choices</span>
+                    <span>{new Date(story.updatedAt).toLocaleDateString()}</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
-      <Link
-        href="/read"
-        style={{
-          display: "inline-block",
-          marginLeft: 10,
-          padding: "10px 14px",
-          borderRadius: 8,
-          border: "1px solid #d1d5db",
-          background: "white",
-          color: "#111827",
-        }}
-      >
-        Go to Reader
-      </Link>
+      <section className={styles.actionsPanel}>
+        <Link href="/author" className={styles.buttonPrimary}>
+          <PenSquare size={16} />
+          Open Author
+        </Link>
+        <Link href="/read" className={styles.buttonSecondary}>
+          <BookOpenText size={16} />
+          Open Reader
+        </Link>
+        <Link href="/account" className={styles.buttonSecondary}>
+          <UserCircle2 size={16} />
+          Account
+        </Link>
+      </section>
     </main>
   );
 }

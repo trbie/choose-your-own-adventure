@@ -1,15 +1,43 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
-import type { GraphIndex } from "@cyoa/shared";
+import { detectCycles, type GraphIndex } from "@cyoa/shared";
 
-import { updateEdge, updateNode } from "@/features/graph/graphSlice";
+import { updateEdge, updateGraphMeta, updateNode } from "@/features/graph/graphSlice";
+import { setInspectorSettingsOpen } from "@/features/ui/uiSlice";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
-export default function InspectorPanel({ index }: { index: GraphIndex | null }) {
+import styles from "./InspectorPanel.module.css";
+
+export default function InspectorPanel({
+  index,
+  width,
+}: {
+  index: GraphIndex | null;
+  width?: number;
+}) {
   const dispatch = useAppDispatch();
+  const doc = useAppSelector((s) => s.graph.doc);
   const selection = useAppSelector((s) => s.graph.selection);
+  const settingsOpen = useAppSelector((s) => s.ui.isInspectorSettingsOpen);
+
+  const meta = doc?.meta ?? null;
+
+  useEffect(() => {
+    if (!settingsOpen) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        dispatch(setInspectorSettingsOpen(false));
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [dispatch, settingsOpen]);
 
   const selectedNode = useMemo(() => {
     if (!index || selection.kind !== "node") return null;
@@ -21,68 +49,151 @@ export default function InspectorPanel({ index }: { index: GraphIndex | null }) 
     return index.edgeById[selection.id] ?? null;
   }, [index, selection]);
 
-  return (
-    <aside
-      style={{
-        width: 360,
-        borderLeft: "1px solid #e5e7eb",
-        padding: 12,
-        overflow: "auto",
-      }}
-    >
-      <div style={{ fontWeight: 600, marginBottom: 8 }}>Inspector</div>
+  const bodyStats = useMemo(() => {
+    const body = selectedNode?.body ?? "";
+    const chars = body.length;
+    const words = body.trim().length ? body.trim().split(/\s+/).length : 0;
+    return { chars, words };
+  }, [selectedNode?.body]);
 
-      {!index && <div style={{ opacity: 0.7 }}>Loading graph…</div>}
+  const cycleInfo = useMemo(() => (doc ? detectCycles(doc) : null), [doc]);
+
+  return (
+    <aside className={styles.panel} style={{ width }}>
+      <div className={styles.title}>Inspector</div>
+
+      {!index && <div className={styles.hint}>Loading graph…</div>}
+
+      {meta && (
+        <div className={styles.storySection}>
+          <button
+            type="button"
+            className={styles.settingsButton}
+            onClick={() => dispatch(setInspectorSettingsOpen(true))}
+            aria-expanded={settingsOpen}
+          >
+            Story settings
+          </button>
+        </div>
+      )}
+
+      {meta && settingsOpen ? (
+        <div
+          className={styles.modalBackdrop}
+          onClick={() => dispatch(setInspectorSettingsOpen(false))}
+        >
+          <div
+            className={styles.modal}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Story settings"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className={styles.modalHeader}>
+              <div className={styles.modalTitle}>Story settings</div>
+              <button
+                type="button"
+                className={styles.modalCloseButton}
+                onClick={() => dispatch(setInspectorSettingsOpen(false))}
+              >
+                Close
+              </button>
+            </div>
+
+            <div className={styles.stack}>
+              <label className={styles.field}>
+                <div className={styles.label}>Title</div>
+                <input
+                  value={meta.title}
+                  onChange={(e) =>
+                    dispatch(updateGraphMeta({ changes: { title: e.target.value } }))
+                  }
+                  className={styles.input}
+                  placeholder="Story title"
+                />
+              </label>
+
+              <label className={styles.field}>
+                <div className={styles.label}>Description</div>
+                <textarea
+                  value={meta.description ?? ""}
+                  onChange={(e) =>
+                    dispatch(
+                      updateGraphMeta({ changes: { description: e.target.value || undefined } }),
+                    )
+                  }
+                  rows={5}
+                  className={`${styles.textarea} ${styles.metaTextarea}`}
+                  placeholder="Short summary shown in the story browser"
+                />
+              </label>
+
+              <label className={styles.checkboxRow}>
+                <input
+                  type="checkbox"
+                  checked={meta.isPublic ?? true}
+                  onChange={(e) =>
+                    dispatch(updateGraphMeta({ changes: { isPublic: e.target.checked } }))
+                  }
+                />
+                <span className={styles.label}>Public (listed in Reader)</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {index && selection.kind === "none" && (
-        <div style={{ opacity: 0.7 }}>Select a node or edge to edit.</div>
+        <div className={styles.hint}>Select a node or edge to edit.</div>
       )}
 
       {selectedNode && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ fontSize: 12, opacity: 0.7 }}>Node: {selectedNode.id}</div>
+        <div className={styles.stack}>
+          <div className={styles.meta}>Node: {selectedNode.id}</div>
 
-          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <div style={{ fontSize: 12, fontWeight: 600 }}>Title</div>
+          <label className={styles.field}>
+            <div className={styles.label}>Title</div>
             <input
               value={selectedNode.title}
               onChange={(e) =>
                 dispatch(updateNode({ id: selectedNode.id, changes: { title: e.target.value } }))
               }
-              style={{ padding: 8, border: "1px solid #d1d5db", borderRadius: 6 }}
+              className={styles.input}
             />
           </label>
 
-          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <div style={{ fontSize: 12, fontWeight: 600 }}>Body</div>
+          <label className={styles.field}>
+            <div className={styles.label}>Body</div>
             <textarea
               value={selectedNode.body}
               onChange={(e) =>
                 dispatch(updateNode({ id: selectedNode.id, changes: { body: e.target.value } }))
               }
-              rows={10}
-              style={{
-                padding: 8,
-                border: "1px solid #d1d5db",
-                borderRadius: 6,
-                resize: "vertical",
-              }}
+              rows={12}
+              className={styles.textarea}
+              placeholder="Write this page section here..."
             />
+            <div className={styles.metrics}>
+              <span>{bodyStats.words} words</span>
+              <span>{bodyStats.chars} chars</span>
+            </div>
           </label>
 
-          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <label className={styles.checkboxRow}>
             <input
               type="checkbox"
               checked={selectedNode.isTerminal}
               onChange={(e) =>
-                dispatch(updateNode({ id: selectedNode.id, changes: { isTerminal: e.target.checked } }))
+                dispatch(
+                  updateNode({ id: selectedNode.id, changes: { isTerminal: e.target.checked } }),
+                )
               }
             />
-            <span style={{ fontSize: 12, fontWeight: 600 }}>Terminal</span>
+            <span className={styles.label}>Terminal</span>
           </label>
 
-          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <div style={{ fontSize: 12, fontWeight: 600 }}>Tags (comma-separated)</div>
+          <label className={styles.field}>
+            <div className={styles.label}>Tags (comma-separated)</div>
             <input
               value={selectedNode.tags.join(", ")}
               onChange={(e) =>
@@ -98,33 +209,47 @@ export default function InspectorPanel({ index }: { index: GraphIndex | null }) 
                   }),
                 )
               }
-              style={{ padding: 8, border: "1px solid #d1d5db", borderRadius: 6 }}
+              className={styles.input}
             />
           </label>
 
-          <div style={{ fontSize: 12, opacity: 0.75 }}>
-            Incoming edges: {index?.incomingEdgeIdsByNodeId[selectedNode.id]?.length ?? 0}
-            <br />
-            Outgoing edges: {index?.outgoingEdgeIdsByNodeId[selectedNode.id]?.length ?? 0}
+          <div className={styles.sectionCard}>
+            <div className={styles.metrics}>
+              <span>Incoming edges</span>
+              <span>{index?.incomingEdgeIdsByNodeId[selectedNode.id]?.length ?? 0}</span>
+            </div>
+            <div className={styles.metrics}>
+              <span>Outgoing edges</span>
+              <span>{index?.outgoingEdgeIdsByNodeId[selectedNode.id]?.length ?? 0}</span>
+            </div>
+            {cycleInfo?.hasCycle ? (
+              <div className={styles.warningText}>
+                {cycleInfo.nodesInCycle.includes(selectedNode.id)
+                  ? "Cycle warning: this node is part of a cycle."
+                  : `Cycle warning: graph contains ${cycleInfo.nodesInCycle.length} cycle node(s).`}
+              </div>
+            ) : null}
           </div>
         </div>
       )}
 
       {selectedEdge && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ fontSize: 12, opacity: 0.7 }}>Edge: {selectedEdge.id}</div>
-          <div style={{ fontSize: 12 }}>
+        <div className={styles.stack}>
+          <div className={styles.meta}>Edge: {selectedEdge.id}</div>
+          <div className={styles.hint}>
             {selectedEdge.source} → {selectedEdge.target}
           </div>
 
-          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <div style={{ fontSize: 12, fontWeight: 600 }}>Choice text</div>
+          <label className={styles.field}>
+            <div className={styles.label}>Choice text</div>
             <input
               value={selectedEdge.choiceText}
               onChange={(e) =>
-                dispatch(updateEdge({ id: selectedEdge.id, changes: { choiceText: e.target.value } }))
+                dispatch(
+                  updateEdge({ id: selectedEdge.id, changes: { choiceText: e.target.value } }),
+                )
               }
-              style={{ padding: 8, border: "1px solid #d1d5db", borderRadius: 6 }}
+              className={styles.input}
             />
           </label>
         </div>

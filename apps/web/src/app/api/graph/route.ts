@@ -4,8 +4,12 @@ import { NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/auth";
 import { docToDbEdges, docToDbNodes } from "@/lib/graphDb";
 import { prisma } from "@/lib/prisma";
+import { serverModeGuard } from "@/lib/server-mode";
 
 export async function POST(req: Request) {
+  const guarded = serverModeGuard();
+  if (guarded) return guarded;
+
   const user = await requireSessionUser();
   const doc = (await req.json().catch(() => null)) as GraphDocument | null;
 
@@ -20,6 +24,7 @@ export async function POST(req: Request) {
         title: doc.meta.title,
         description: doc.meta.description ?? null,
         startNodeId: doc.meta.startNodeId ?? null,
+        isPublic: doc.meta.isPublic ?? true,
       },
       select: { id: true },
     });

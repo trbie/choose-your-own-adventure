@@ -2,8 +2,12 @@ import { NextResponse } from "next/server";
 
 import { requireSessionUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { serverModeGuard } from "@/lib/server-mode";
 
 export async function GET(_: Request, ctx: { params: Promise<{ graphId: string }> }) {
+  const guarded = serverModeGuard();
+  if (guarded) return guarded;
+
   const user = await requireSessionUser();
   const { graphId } = await ctx.params;
 
@@ -15,6 +19,9 @@ export async function GET(_: Request, ctx: { params: Promise<{ graphId: string }
 }
 
 export async function PUT(req: Request, ctx: { params: Promise<{ graphId: string }> }) {
+  const guarded = serverModeGuard();
+  if (guarded) return guarded;
+
   const user = await requireSessionUser();
   const { graphId } = await ctx.params;
 

@@ -34,6 +34,7 @@ export function dbToGraphDocument(graph: Graph & { nodes: GraphNode[]; edges: Gr
       createdAt: graph.createdAt.toISOString(),
       updatedAt: graph.updatedAt.toISOString(),
       startNodeId: graph.startNodeId ?? undefined,
+      isPublic: graph.isPublic,
     },
     nodes,
     edges,
